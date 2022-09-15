@@ -35,7 +35,7 @@ Recommendations:
 ### Assigning adresses to PODs
 
 For PODs, there are various options how to get addresses assigned
-- Via the **kube-controller-manager**: this is the traditional one and I would try it in a PoC first…
+- Via the **kube-controller-manager**: this is the traditional one I tried it in a first manual PoC … [but it is broken](https://github.com/cilium/cilium/issues/20756)
   - This is enabled when launching the *kube-controller-manager* with  ```--allocate-node-cidrs```
   - When a `v1.Node` ressource is created, the *kube-controller-manager* sets the `PodCIDR` or `PodCIDRs`resource field to the prefix assigned to the node.
   - But where does the *kube-controller-manager* get its addresses from? It internally uses the [nodeipam GO package](https://pkg.go.dev/k8s.io/kubernetes/pkg/controller/nodeipam) to get the CIDR
