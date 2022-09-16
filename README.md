@@ -35,12 +35,15 @@ Recommendations:
 ### Assigning adresses to PODs
 
 For PODs, there are various options how to get addresses assigned
-- Via the **kube-controller-manager**: this is the traditional one I tried it in a first manual PoC … [but it is broken](https://github.com/cilium/cilium/issues/20756)
+- Via the **kube-controller-manager**: this is the traditional one and a good choice for an PoC
   - This is enabled when launching the *kube-controller-manager* with  ```--allocate-node-cidrs```
   - When a `v1.Node` ressource is created, the *kube-controller-manager* sets the `PodCIDR` or `PodCIDRs`resource field to the prefix assigned to the node.
   - But where does the *kube-controller-manager* get its addresses from? It internally uses the [nodeipam GO package](https://pkg.go.dev/k8s.io/kubernetes/pkg/controller/nodeipam) to get the CIDR
     - The parameter ```--cidr-allocator-type CloudAllocator``` tells it to use the cloud plugin to derive the cidr from the infrastructure
-    - The parameter ```--cidr-allocator-type RangeAllocator``` tells it to use a range of site ```node-cidr-mask-size``` from the ```clusterCIDRs``` configured
+    - The parameter ```--cidr-allocator-type RangeAllocator``` tells it to use a range of site ```node-cidr-mask-size-ipv6``` from the ```clusterCIDRs``` configured
+    - **warning** [nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756) 
+      Using sane config values results in wierd "CIDR range too large" error. 
+      Make sure make sure that $clusterCidrMask - NodeCidrMaskSize < 16$
 - Via a **different controller** that sets the `PodCIDR` or `PodCIDRs`resource  
 - Via the **CNI** and CNI specific replacement for `PodCIDR` this is the default for *Calico*
 - Via a controller on the Node itself that updates the `v1.Node` ressource
@@ -50,6 +53,12 @@ Once the `PodCIDR` has been added on the Node ressource, the CNI will pick up th
 ### Preventing NAT for PODs
 
 When routing the POD v6 addressess, it does not make sense to hide them behind the Node IP.  The switch controlling that looks like a wierd side effect… make shure IPv6 range ist *not* passed to `--cluster-cidr`of the kube proxy. 
+
+### Assigning adresses to Services
+
+- There is a IPv6 related bug in *kube-apiserver* that keeps crashing if ```service-cidr``` is larger than ```/112```.
+- It may be useful to use global ipv6 address space here to enable cluster to cluster exposure of services
+- For a PoC, using [ULA/RFC 4193](https://datatracker.ietf.org/doc/html/rfc4193) is totally valid.
 
 ## Gardener Configuration Proposal
 
