@@ -94,11 +94,12 @@ Example:
 ## Addressing Scheme Ideas
 
 - we take one Cluster Prefix from the cloud infrastructure for Nodes and Pods (usually /64)
-- we take one prefix per Node (length depends on infrastructure /80.../96) from that Cluster prefix
+- we take one prefix per Node (length depends on infrastructure /64.../80.../96) from that Cluster prefix
 
 | **Bits**    | 0...........64 |                      ..96 |                                      ..128 |
 | :---------- | :------------- | :------------------------ | :----------------------------------------- |
-| **General** | Cluster Prefix | Node ID (..96)            | Pool/Res Type (..104/112) + Res ID (..128) | 
+| **General** | Cluster Prefix | Node ID (..96)            | Pool/Res Type (..104/112) + Res ID (..128) |
+| **GoM**.    | Node/VM Prefix | 0       (..96)            | Pool/Res Type (..104/112) + Res ID (..128) |
 | **AWS**     | Subnet         | Node ID (..80) + 0 (..96) | Pool/Res Type (..104/112) + Res ID (..128) | 
 | **GCP**     | Subnet         | Node ID (..96)            | Pool/Res Type (..104/112) + Res ID (..128) | 
 
@@ -114,6 +115,10 @@ Example:
 |      28 | `d`        | Per-Namespace Pod Range | Allow custom CNI PIAM to construct addresses (12b NS + 16b Pod) |
 
 - For Services, we either use a pseudo-node and use its prefix for services or a 
+
+### Issues: 
+ - For some infrastructures like GoM it would be advisable to use a /64 per VM/node due to hardware limitations.
+ - Generally using a /64 per VM/node is dangerous because this will limit the flexibility for a general IPv6 numbering scheme. Given a /36 per cloud region and that we want to stay on a nibble boundry for each aggregation level, we easily run out of bits for AZs, VPCs and VMs. If we have a flat network without VPCs, a /64 per VM is not a problem.   
 
 ## Collection of random related links
  - https://kubernetes.io/docs/concepts/services-networking/dual-stack/#enable-ipv4-ipv6-dual-stack
