@@ -24,8 +24,8 @@ In addition to that, it looks like much of the overlay code has not been tested 
 
 Most K8S documentation does not cover the individual components hat may or may not be involved in assigning IP addresses to Nodes and Pods. 
 
-**Warning** Be careful to limit all "pool"-sizes to 16 bits, e.g., make sure make sure that $clusterCidrMask - NodeCidrMaskSize < 16$. 
-  [Nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756). 
+**Warning** Be careful to limit all "pool"-sizes to 16 bits, e.g., make sure that $clusterCidrMask - NodeCidrMaskSize < 16$. 
+  [Nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756) and used all over in k8s ecosystem. 
   Using (from an addressing perspective) sane config values results in wierd "CIDR range too large" errors. 
   
 
