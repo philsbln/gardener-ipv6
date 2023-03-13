@@ -24,6 +24,11 @@ In addition to that, it looks like much of the overlay code has not been tested 
 
 Most K8S documentation does not cover the individual components hat may or may not be involved in assigning IP addresses to Nodes and Pods. 
 
+**Warning** Be careful to limit all "pool"-sizes to 16 bits, e.g., make sure make sure that $clusterCidrMask - NodeCidrMaskSize < 16$. 
+  [Nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756). 
+  Using (from an addressing perspective) sane config values results in wierd "CIDR range too large" errors. 
+  
+
 ### Assigning adresses to Nodes
 
 From K8S perspective, the infrastructure assignes addresses to Nodes. Whether this is done from within the *cloud-controller*, the *CNI*, or the infrastructure does not matter for the control plane. 
@@ -41,9 +46,6 @@ For PODs, there are various options how to get addresses assigned
   - But where does the *kube-controller-manager* get its addresses from? It internally uses the [nodeipam GO package](https://pkg.go.dev/k8s.io/kubernetes/pkg/controller/nodeipam) to get the CIDR
     - The parameter ```--cidr-allocator-type CloudAllocator``` tells it to use the cloud plugin to derive the cidr from the infrastructure
     - The parameter ```--cidr-allocator-type RangeAllocator``` tells it to use a range of site ```node-cidr-mask-size-ipv6``` from the ```clusterCIDRs``` configured
-    - **warning** [nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756) 
-      Using sane config values results in wierd "CIDR range too large" error. 
-      Make sure make sure that $clusterCidrMask - NodeCidrMaskSize < 16$
 - Via a **different controller** that sets the `PodCIDR` or `PodCIDRs`resource  
 - Via the **CNI** and CNI specific replacement for `PodCIDR` this is the default for *Calico*
 - Via a controller on the Node itself that updates the `v1.Node` ressource
