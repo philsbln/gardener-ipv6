@@ -1,34 +1,53 @@
 # Addressing considerations for Gardener IPv6 support
 
-### Assigning adresses to Nodes
+## Assigning addresses to Nodes
 
-From K8S perspective, the infrastructure assignes addresses to Nodes. Whether this is done from within the *cloud-controller*, the *CNI*, or the infrastructure does not matter for the control plane. 
+From K8S perspective, the infrastructure assigns addresses to Nodes. Whether this is done from within the *cloud-controller*, the *CNI*, or the infrastructure does not matter for the control plane. 
 
-For security purpuses, it might be advisable to separate node and pod address range.
+For security purposes, it might be advisable to separate node and pod address range.
 This seems incompatible to how GCP implements ipv6 and may require some tricks on AWS. 
 
 Recommendations:
-- Reduce assuptions abot node addresses to a bare minimum
-- Try to prrof-point that we don't need a strict separation between node and pod address ranges.
+- Reduce assumptions abot node addresses to a bare minimum
+- Try to prrof-point that we don't need separation between node and pod address ranges.
 - Have infrastructure assign nodes addresses using their own IPAM.
 - Discover & use node addresses automatically.
 
-### Assigning adresses to PODs
+## Assigning addresses to PODs
 
-For PODs, there are various options how to get addresses assigned
-- Via the **kube-controller-manager**: this is the traditional one and a good choice for an PoC
+For PODs, there are various options how pod addresses are assigned to the nodes and pods
+
+### POD address (ranges) to Nodes (on the control plane)
+
+- Via the **kube-controller-manager**: this is the traditional one and used in Gardener
   - This is enabled when launching the *kube-controller-manager* with  ```--allocate-node-cidrs```
-  - When a `v1.Node` ressource is created, the *kube-controller-manager* sets the `PodCIDR` or `PodCIDRs`resource field to the prefix assigned to the node.
+  - When a `v1.Node` resource is created, the *kube-controller-manager* sets the `PodCIDR` or `PodCIDRs`resource field to the prefix assigned to the node.
   - But where does the *kube-controller-manager* get its addresses from? It internally uses the [nodeipam GO package](https://pkg.go.dev/k8s.io/kubernetes/pkg/controller/nodeipam) to get the CIDR
     - The parameter ```--cidr-allocator-type CloudAllocator``` tells it to use the cloud plugin to derive the cidr from the infrastructure
     - The parameter ```--cidr-allocator-type RangeAllocator``` tells it to use a range of site ```node-cidr-mask-size-ipv6``` from the ```clusterCIDRs``` configured
+  - Disadvantage: 
+    - Limitations of the *nodeipam GO package* mentioned above
+    - That approach does not go well with assigning a prefix per node and have the routing in the IaaS 
+- Via a **controller part of the CNI** 
+  - Depending on the anticipated CNI plugin on the node, there are various ways how the these ranges could be communicated:
+    - Using the `PodCIDR` or `PodCIDRs` on the node object (Default in Gardener)
+    - Using an CNI specific resources on the node object (Default way for Calico)
+    - Using the API of the IaaS as ground truth (Default in AWS CNI)
 - Via a **different controller** that sets the `PodCIDR` or `PodCIDRs`resource  
-- Via the **CNI** and CNI specific replacement for `PodCIDR` this is the default for *Calico*
+
+Recommendations: Decide whether we want 
+  - A minimal solution => Set `PodCIDR` or `PodCIDRs` resource from MCM or webhook
+  - A full-flex solution => Come up with gardener-specific resources and write our own CNI-IPAM plugin 
+
+### POD addresses to PODs (on the Node)
+
+- The **host-only-CNI** picks up `PodCIDR` or `PodCIDRs` and assigns from that ranges (Default in Gardener)
+- The **CNI** picks up `PodCIDR` or `PodCIDRs` or a CNI specific replacement and manages it by its own means (Default in Calico)
+- The **CNI** picks addresses from the IaaS control plane and manages it by its own means (AWS-CNI)
 - Via a controller on the Node itself that updates the `v1.Node` ressource
 
-Once the `PodCIDR` has been added on the Node ressource, the CNI will pick up this information and configure the the node and pods accordingly  
 
-## Addressing Scheme Ideas
+## Addressing Scheme Ideas (WIP)
 
 - we take one Cluster Prefix from the cloud infrastructure for Nodes and Pods (usually /64)
 - we take one prefix per Node (length depends on infrastructure /64.../80.../96) from that Cluster prefix
