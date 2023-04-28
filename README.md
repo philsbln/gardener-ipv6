@@ -20,47 +20,13 @@ When using these prefixes to derive pod addresses, we need no additional routing
 
 In addition to that, it looks like much of the overlay code has not been tested well with IPv6 and much of their complexity was introduced to work around address shortage and overlapping address space. Therefore, just copying an overlay design to the IPv6 world may be harmful. 
 
-## K8S Network Architecture dissected
+## Addressing
 
-Most K8S documentation does not cover the individual components hat may or may not be involved in assigning IP addresses to Nodes and Pods. 
+Most K8S documentation does not cover the individual components that may or may not be involved in assigning IP addresses to Nodes and Pods. 
 
-**Warning** Be careful to limit all "pool"-sizes to 16 bits, e.g., make sure that $clusterCidrMask - NodeCidrMaskSize < 16$. 
-  [Nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756) and used all over in k8s ecosystem. 
-  Using (from an addressing perspective) sane config values results in wierd "CIDR range too large" errors. 
+The different architectural decisions are now coverd in a separate [addressing document](addressing).
   
 
-### Assigning adresses to Nodes
-
-From K8S perspective, the infrastructure assignes addresses to Nodes. Whether this is done from within the *cloud-controller*, the *CNI*, or the infrastructure does not matter for the control plane. 
-
-Recommendations:
-- let infrastructure assign addresses to nodes based on their own IPAM
-- For a PoC on AWS, create a VPC with AWS assigned /56, make an IPv6 only subnet and request a /80 prefix per VM
-
-### Assigning adresses to PODs
-
-For PODs, there are various options how to get addresses assigned
-- Via the **kube-controller-manager**: this is the traditional one and a good choice for an PoC
-  - This is enabled when launching the *kube-controller-manager* with  ```--allocate-node-cidrs```
-  - When a `v1.Node` ressource is created, the *kube-controller-manager* sets the `PodCIDR` or `PodCIDRs`resource field to the prefix assigned to the node.
-  - But where does the *kube-controller-manager* get its addresses from? It internally uses the [nodeipam GO package](https://pkg.go.dev/k8s.io/kubernetes/pkg/controller/nodeipam) to get the CIDR
-    - The parameter ```--cidr-allocator-type CloudAllocator``` tells it to use the cloud plugin to derive the cidr from the infrastructure
-    - The parameter ```--cidr-allocator-type RangeAllocator``` tells it to use a range of site ```node-cidr-mask-size-ipv6``` from the ```clusterCIDRs``` configured
-- Via a **different controller** that sets the `PodCIDR` or `PodCIDRs`resource  
-- Via the **CNI** and CNI specific replacement for `PodCIDR` this is the default for *Calico*
-- Via a controller on the Node itself that updates the `v1.Node` ressource
-
-Once the `PodCIDR` has been added on the Node ressource, the CNI will pick up this information and configure the the node and pods accordingly  
-
-### Preventing NAT for PODs
-
-When routing the POD v6 addressess, it does not make sense to hide them behind the Node IP.  The switch controlling that looks like a wierd side effect… make shure IPv6 range ist *not* passed to `--cluster-cidr`of the kube proxy. 
-
-### Assigning adresses to Services
-
-- There is a IPv6 related bug in *kube-apiserver* that keeps crashing if ```service-cidr``` is larger than ```/112```.
-- It may be useful to use global ipv6 address space here to enable cluster to cluster exposure of services
-- For a PoC, using [ULA/RFC 4193](https://datatracker.ietf.org/doc/html/rfc4193) is totally valid.
 
 ## Gardener Configuration Proposal
 
@@ -93,32 +59,10 @@ Example:
 ```
 
 
-## Addressing Scheme Ideas
-
-- we take one Cluster Prefix from the cloud infrastructure for Nodes and Pods (usually /64)
-- we take one prefix per Node (length depends on infrastructure /64.../80.../96) from that Cluster prefix
-
-| **Bits**    | 0...........64 |                      ..96 |                                      ..128 |
-| :---------- | :------------- | :------------------------ | :----------------------------------------- |
-| **General** | Cluster Prefix | Node ID (..96)            | Pool/Res Type (..104/112) + Res ID (..128) |
-| **GoM**.    | Node/VM Prefix | 0       (..96)            | Pool/Res Type (..104/112) + Res ID (..128) |
-| **AWS**     | Subnet         | Node ID (..80) + 0 (..96) | Pool/Res Type (..104/112) + Res ID (..128) | 
-| **GCP**     | Subnet         | Node ID (..96)            | Pool/Res Type (..104/112) + Res ID (..128) | 
-
-- that Node Prefix is further split per Pool/Ressource Type 
-  We use some IP encoding inspired by QUIC variants to make adresses shorter/ more readable and still 
-  allow large pools. So we support 255 16 bit pool types and 15 24bit pool types and 15 28bit pool types
-
-| **Len** | **Prefix** | **Pool Type**           | **Usage** |
-| ------: | :--------- | :---------------------- | :-------------------------------------------------------------- |
-|      16 | `0000`     | Node addresses          | Used to address nodes / services on the node                    |
-|      24 | `0d`       | Default Pod Range       | Fed into PodCIDRs to let CNI pick addresses                     |
-|      24 | `0f`       | Services                | Used as service-prefix on the Pseudo-Node with NodeID 0000      |
-|      28 | `d`        | Per-Namespace Pod Range | Allow custom CNI PIAM to construct addresses (12b NS + 16b Pod) |
-
-- For Services, we either use a pseudo-node and use its prefix for services or a 
-
 ### Issues: 
+ - **Warning** Be careful to limit all "pool"-sizes to 16 bits, e.g., make sure that $clusterCidrMask - NodeCidrMaskSize < 16$. 
+  [Nodeipam is broken in several ways](https://github.com/cilium/cilium/issues/20756) and used all over in k8s ecosystem. 
+  Using (from an addressing perspective) sane config values results in wierd "CIDR range too large" errors. 
  - For some infrastructures like GoM it would be advisable to use a /64 per VM/node due to hardware limitations.
  - Generally using a /64 per VM/node is dangerous because this will limit the flexibility for a general IPv6 numbering scheme. Given a /36 per cloud region and that we want to stay on a nibble boundry for each aggregation level, we easily run out of bits for AZs, VPCs and VMs. If we have a flat network without VPCs, a /64 per VM is not a problem.   
 
