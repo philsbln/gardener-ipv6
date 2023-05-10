@@ -40,9 +40,13 @@ Still, in order to achieve scalability, we need to perform a two-step approach t
 - Via the **cloud-controller-manager**
 
   - Uses the same code as *kube-controller-manager* by default, but can get overridden by the cloud provider implementation.
-  - AWS: TODO
+  - AWS: not implemented (functionality is in the CNI)
   - GCP: TODO
   - Azure: TODO
+
+  Advantages:
+    - Seems the right place from achtitecture point of view
+    - Integrates best with infrastructure
 
 - Via a **controller that may be part of the CNI**
   - Depending on the anticipated CNI plugin on the node, there are various ways how the these ranges could be communicated:
