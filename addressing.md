@@ -16,7 +16,8 @@ Recommendations:
 ## Assigning addresses to PODs
 
 For PODs, there are various options how pod addresses are assigned.
-To achieve scalability, we need to perform a two-step approach that first assigns pod prefixes to the nodes and then have the pod addresses assigned by the nodes.
+From a kubernetes control plane perspctive there is no need to aggregate POD addresses on a a per-node basis.
+Still, in order to achieve scalability, we need to perform a two-step approach that first assigns IP prefixes to the nodes and then have the nodes assign addresses frome these prefixes to pods.
 
 ### POD address (ranges) to Nodes (on the control plane)
 
@@ -32,8 +33,16 @@ To achieve scalability, we need to perform a two-step approach that first assign
     - Pretty simple
 
   Disadvantages:
+    - Functionality is likely to be infrastructure specific and, thus better handeled in the cloud-controller-manager
     - Limitations of the *nodeipam GO package* limit the pool size to 16bits
     - The approach does not go well with assigning a larger prefix per node and have the routing in the IaaS while only using parts of it for the PODs
+
+- Via the **cloud-controller-manager**
+
+  - Uses the same code as *kube-controller-manager* by default, but can get overridden by the cloud provider implementation.
+  - AWS: TODO
+  - GCP: TODO
+  - Azure: TODO
 
 - Via a **controller that may be part of the CNI**
   - Depending on the anticipated CNI plugin on the node, there are various ways how the these ranges could be communicated:
