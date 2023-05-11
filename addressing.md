@@ -39,10 +39,13 @@ Still, in order to achieve scalability, we need to perform a two-step approach t
 
 - Via the **cloud-controller-manager**
 
-  - Uses the same code as *kube-controller-manager* by default, but can get overridden by the cloud provider implementation.
-  - AWS: not implemented (functionality is in the CNI)
-  - GCP: TODO
-  - Azure: TODO
+  - Code was copied over from *kube-controller-manager* by default, but can get overridden by the cloud provider implementation.
+  - Support in the individual cloud-provider out-of-tree plugins differs:
+    ```diff
+    - AWS: not implemented (functionality is in the CNI)
+    + GCP: fully implemented for IPv4 and IPv6
+    # Azure: TODO
+    ```
 
   Advantages:
     - Seems the right place from achtitecture point of view
