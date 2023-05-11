@@ -42,16 +42,20 @@ Still, in order to achieve scalability, we need to perform a two-step approach t
   - Code was copied over from *kube-controller-manager* by default, but can get overridden by the cloud provider implementation.
   - Support in the individual cloud-provider out-of-tree plugins differs:
     ```diff
-    - AWS: not implemented (functionality is in the CNI)
     + GCP: fully implemented for IPv4 and IPv6
-    # Azure: TODO
+    - AWS: not implemented (functionality is in the CNI)
+    - Azure: not implemented (one could use --cidr-allocator-type RangeAllocator and fix routing)
     - OpenStack: not implemented (one could use --cidr-allocator-type RangeAllocator and fix routing)
     ```
 
   Advantages:
     - Seems the right place from achtitecture point of view
-    - Integrates best with infrastructure
+    - Allows to integrates with infrastructure without giving credentials to the Nodes
 
+  Disadvantages:
+    - There is only prior art for GCP
+    - Code infrastructure is a mess  
+ 
 - Via a **controller that may be part of the CNI**
   - Depending on the anticipated CNI plugin on the node, there are various ways how the these ranges could be communicated:
     - Using the `PodCIDR` or `PodCIDRs` on the node object
