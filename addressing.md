@@ -45,6 +45,7 @@ Still, in order to achieve scalability, we need to perform a two-step approach t
     - AWS: not implemented (functionality is in the CNI)
     + GCP: fully implemented for IPv4 and IPv6
     # Azure: TODO
+    - OpenStack: not implemented (one could use --cidr-allocator-type RangeAllocator and fix routing)
     ```
 
   Advantages:
